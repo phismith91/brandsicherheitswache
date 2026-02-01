@@ -3,7 +3,7 @@
 Kleine Web-App für kryptographisch sichere Zufallsziehungen (Browser-CSPRNG, Fisher–Yates), entwickelt von Philipp.
 
 Dateien:
-- `brandsicherheitswacht-ziehung.html` — Haupt-UI und Logik
+- `index.html` — Haupt-UI und Logik
 - `js/` — lokale Hilfsbibliotheken
 
 Benutzung:
