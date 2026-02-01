@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Brandsicherheitswache – Zufallsziehung</title>
+<subtitle>Ein Tool der Feuerwehr Aidlingen</subtitle>
+<script src="js/libs/jspdf.umd.min.js"></script>
+<script>
+  (function(){
+    // Load CDN fallback only if local copy didn't initialize (Tracking Prevention may block CDN storage access)
+    if (!window.jspdf) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.crossOrigin = 'anonymous';
+      s.onload  = function(){ console.info('Loaded jsPDF from CDN fallback'); };
+      s.onerror = function(){ console.warn('Failed to load jsPDF from CDN fallback (tracking prevention?)'); };
+      document.head.appendChild(s);
+    }
+  })();
+</script>
+<style>
+/* ============================================================
+   DESIGN-AGENT — Feuerwehr-Industrial Ästhetik
+   Palette: Deep Charcoal Base | Feuerwehr-Rot | Amber Akzent
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg-base:        #111214;
+  --bg-card:        #1c1e22;
+  --bg-card-light: #242729;
+  --red-primary:    #c0392b;
+  --red-hover:      #e74c3c;
+  --red-glow:       rgba(192, 57, 43, 0.35);
+  --amber:          #d4a017;
+  --amber-dim:      rgba(212, 160, 23, 0.25);
+  --text-primary:   #eee8df;
+  --text-secondary: #8a8b8e;
+  --text-muted:     #5a5b5e;
+  --border:         #2f3133;
+  --radius:         6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Oswald', sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+  /* subtile Körner-Struktur */
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(192,57,43,0.08) 0%, transparent 70%),
+    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ──── LAYOUT ──── */
+.page-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 40px 20px 60px;
+}
+
+/* ──── HEADER ──── */
+.header {
+  text-align: center;
+  margin-bottom: 36px;
+  position: relative;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -12px; left: 50%;
+  transform: translateX(-50%);
+  width: 60px; height: 2px;
+  background: var(--red-primary);
+  box-shadow: 0 0 8px var(--red-glow);
+}
+.header-icon {
+  font-size: 28px;
+  letter-spacing: 6px;
+  color: var(--red-primary);
+  margin-bottom: 10px;
+  opacity: 0.85;
+}
+.header h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.header .subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 6px;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+/* ──── CARD ──── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.card-label {
+  font-size: 0.7rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-label::before {
+  content: ''; display: block;
+  width: 3px; height: 12px;
+  background: var(--amber);
+  border-radius: 2px;
+}
+
+/* ──── EINGABEFELDER ──── */
+textarea {
+  width: 100%;
+  min-height: 130px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  padding: 14px 16px;
+  resize: vertical;
+  transition: border-color 0.2s;
+  outline: none;
+}
+textarea:focus { border-color: var(--red-primary); box-shadow: 0 0 10px var(--red-glow); }
+textarea::placeholder { color: var(--text-muted); }
+
+.input-row {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.input-group { display: flex; flex-direction: column; gap: 6px; }
+.input-group label {
+  font-size: 0.68rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.number-input-wrap {
+  position: relative; width: 90px;
+}
+input[type="number"] {
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 0;
+  outline: none;
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+  -webkit-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 10px var(--red-glow); }
+
+.btn-stepper {
+  position: absolute; right: 6px;
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 11px; line-height: 1;
+  transition: color 0.15s;
+}
+.btn-stepper:hover { color: var(--amber); }
+.btn-stepper.up  { top: 5px; }
+.btn-stepper.down { bottom: 5px; }
+
+.info-text {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: 'Share Tech Mono', monospace;
+  margin-top: 4px;
+}
+
+/* ──── BUTTON ──── */
+.btn-draw {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  background: var(--red-primary);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-draw:hover {
+  background: var(--red-hover);
+  box-shadow: 0 0 20px var(--red-glow);
+}
+.btn-draw:active { transform: scale(0.98); }
+.btn-draw:disabled {
+  background: #3a3b3e;
+  color: var(--text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+/* Ripple */
+.btn-draw .ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  transform: scale(0);
+  animation: ripple-anim 0.6s linear;
+  pointer-events: none;
+}
+@keyframes ripple-anim {
+  to { transform: scale(4); opacity: 0; }
+}
+
+/* ──── DRUM-ROLL ANIMATION ──── */
+.draw-stage {
+  display: none;
+  text-align: center;
+  padding: 32px 0 16px;
+}
+.draw-stage.active { display: block; }
+
+.drum-container {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  position: relative;
+  height: 64px;
+  margin-bottom: 8px;
+}
+/* Fenster-Highlight oben & unten */
+.drum-container::before,
+.drum-container::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 18px; z-index: 2;
+  pointer-events: none;
+}
+.drum-container::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--bg-card), transparent);
+}
+.drum-container::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg-card), transparent);
+}
+/* Mittel-Highlight */
+.drum-window {
+  position: absolute; top: 18px; left: 0; right: 0; height: 28px;
+  border-top: 1px solid var(--amber); border-bottom: 1px solid var(--amber);
+  box-shadow: inset 0 0 12px var(--amber-dim);
+  z-index: 1;
+  pointer-events: none;
+}
+.drum-track {
+  position: absolute; top: 0; left: 0; right: 0;
+  transition: transform 0.08s linear;
+}
+.drum-item {
+  height: 64px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Oswald', sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 0 20px;
+}
+.drum-item.highlight {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ──── ERGEBNIS ──── */
+.result-section { display: none; }
+.result-section.active { display: block; }
+
+.result-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.result-title {
+  font-size: 0.7rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex; align-items: center; gap: 8px;
+}
+.result-title::before {
+  content: '✓'; display: flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  background: var(--amber);
+  border-radius: 50%;
+  color: var(--bg-base);
+  font-size: 11px; font-weight: 700;
+}
+.btn-reset {
+  background: none; border: 1px solid var(--border);
+  color: var(--text-muted); font-family: 'Oswald', sans-serif;
+  font-size: 0.7rem; letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 5px 12px; border-radius: var(--radius);
+  cursor: pointer; transition: border-color 0.2s, color 0.2s;
+}
+.btn-reset:hover { border-color: var(--red-primary); color: var(--text-primary); }
+
+.winner-list { list-style: none; }
+.winner-item {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 8px;
+  animation: slideIn 0.35s ease both;
+}
+.winner-item:nth-child(1) { border-left: 3px solid var(--amber); }
+.winner-item:nth-child(n+2) { border-left: 3px solid var(--red-primary); }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.winner-rank {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  width: 28px; text-align: center;
+  background: var(--bg-base);
+  border-radius: 4px;
+  padding: 3px 0;
+}
+.winner-item:nth-child(1) .winner-rank { color: var(--amber); background: rgba(212,160,23,0.12); }
+
+.winner-name {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+/* ──── TRANSPARENZ-FOOTER ──── */
+.transparency {
+  margin-top: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.transparency-header {
+  padding: 10px 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  user-select: none;
+}
+.transparency-header span {
+  font-size: 0.68rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.transparency-header .toggle-icon { transition: transform 0.2s; color: var(--text-muted); font-size: 10px; }
+.transparency.open .toggle-icon { transform: rotate(180deg); }
+.transparency-body {
+  max-height: 0; overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.transparency.open .transparency-body { max-height: 400px; }
+.transparency-content {
+  padding: 0 18px 16px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.8;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.transparency-content .label { color: var(--amber); }
+
+/* ──── VALIDATION MSG ──── */
+.msg {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.72rem;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  margin-top: 10px;
+  display: none;
+}
+.msg.error { display: block; background: rgba(192,57,43,0.15); color: #e07070; border: 1px solid rgba(192,57,43,0.3); }
+.msg.warn  { display: block; background: rgba(212,160,23,0.1); color: #c8a030; border: 1px solid rgba(212,160,23,0.25); }
+
+/* ──── TEXT INPUT (Veranstaltungsname) ──── */
+.text-input {
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  padding: 11px 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.text-input:focus { border-color: var(--red-primary); box-shadow: 0 0 10px var(--red-glow); }
+.text-input::placeholder { color: var(--text-muted); font-weight: 300; }
+
+/* ──── EXPORT LEISTE ──── */
+.export-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+.btn-export {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 16px;
+  background: var(--bg-card-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.btn-export:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(212, 160, 23, 0.06);
+}
+.btn-export .btn-icon { font-size: 14px; opacity: 0.7; }
+
+/* ──── PROTOKOLL-TABELLE (im PDF-Bereich) ──── */
+.protocol-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+}
+.protocol-table th {
+  text-align: left;
+  color: var(--amber);
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.protocol-table td {
+  color: var(--text-secondary);
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(47,49,51,0.5);
+  word-break: break-all;
+}
+.protocol-table tr:last-child td { border-bottom: none; }
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-icon">⛑ ⛑ ⛑</div>
+    <h1>BRANDSICHERHEITSWACHE</h1>
+    <div class="subtitle">Zufallsziehung · Kryptographisch Sicher</div>
+  </div>
+
+  <!-- EINGABE: VERANSTALTUNG -->
+  <div class="card">
+    <div class="card-label">Veranstaltung</div>
+    <input type="text" id="eventNameInput" class="text-input" placeholder="z. B. BRANDSICHERHEITSWACHE – Silvester 2025" />
+  </div>
+
+  <!-- EINGABE: NAMEN -->
+  <div class="card">
+    <div class="card-label">Teilnehmer</div>
+    <textarea id="namesInput" placeholder="Ein Name pro Zeile eingeben…
+
+Max Mustermann
+Anna Beispiel
+Klaus Zugzieher
+…"></textarea>
+    <div id="namesMsg"></div>
+  </div>
+
+  <!-- EINGABE: ANZAHL + BUTTON -->
+  <div class="card">
+    <div class="card-label">Dienstanzahl</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Wie viele werden gezogen?</label>
+        <div class="number-input-wrap">
+          <input type="number" id="countInput" value="1" min="1" max="50"/>
+          <button class="btn-stepper up" onclick="stepCount(1)">▲</button>
+          <button class="btn-stepper down" onclick="stepCount(-1)">▼</button>
+        </div>
+      </div>
+      <div class="input-group" style="flex:1; min-width:180px;">
+        <label>&nbsp;</label>
+        <button class="btn-draw" id="drawBtn" onclick="startDraw()">
+          Ziehung Starten
+        </button>
+      </div>
+    </div>
+    <div id="countMsg"></div>
+  </div>
+
+  <!-- DRUM-ROLL BÜHNE -->
+  <div class="draw-stage" id="drawStage">
+    <div class="drum-container">
+      <div class="drum-window"></div>
+      <div class="drum-track" id="drumTrack"></div>
+    </div>
+    <div class="info-text" id="drumLabel" style="color: var(--amber);">Ziehung läuft…</div>
+  </div>
+
+  <!-- ERGEBNIS -->
+  <div class="result-section" id="resultSection">
+    <div class="result-header">
+      <div class="result-title">Ergebnis</div>
+      <button class="btn-reset" onclick="resetAll()">↺ Neue Ziehung</button>
+    </div>
+    <ul class="winner-list" id="winnerList"></ul>
+
+    <!-- EXPORT LEISTE -->
+    <div class="export-row">
+      <button class="btn-export" onclick="exportPDF()">
+        <span class="btn-icon">▤</span> PDF-Protokoll
+      </button>
+      <button class="btn-export" onclick="exportCSV()">
+        <span class="btn-icon">⊞</span> CSV-Export
+      </button>
+    </div>
+
+    <!-- TRANSPARENZ -->
+    <div class="transparency" id="transparencyBox">
+      <div class="transparency-header" onclick="toggleTransparency()">
+        <span>Transparenz · Entropie-Details</span>
+        <span class="toggle-icon">▼</span>
+      </div>
+      <div class="transparency-body">
+        <div class="transparency-content" id="transparencyContent">
+          <table class="protocol-table" id="protocolTable">
+            <!-- wird dynamisch gefüllt -->
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================
+     LOGIC-AGENT — Kryptographisch sichere Zufallslogik
+     ============================================================ -->
+<script>
+// ────────────────────────────────────────────────────────────
+// LogicAgent: Alle Zufalls- und Validierungslogik
+// ────────────────────────────────────────────────────────────
+
+const LogicAgent = (() => {
+
+  /**
+   * Erzeugt eine kryptographisch sichere Zufallszahl in [0, max).
+   * Verwendet crypto.getRandomValues() → CSPRNG des Browsers.
+   * Vermeidet Modulo-Bias durch Rejection-Sampling.
+   */
+  function cryptoRandBelow(max) {
+    const arr = new Uint32Array(1);
+    const limit = Math.floor(0xFFFFFFFF / max) * max; // Rejection-Grenze
+    while (true) {
+      crypto.getRandomValues(arr);
+      if (arr[0] < limit) return arr[0] % max;
+    }
+  }
+
+  /**
+   * Fisher-Yates-Shuffle mit kryptographischer Entropie.
+   * Gibt eine neue, gemischte Kopie des Arrays zurück.
+   * Protokolliert jeden Swap für Transparenz.
+   */
+  function cryptoShuffle(arr) {
+    const a = [...arr];
+    const swapLog = [];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = cryptoRandBelow(i + 1);
+      swapLog.push({ i, j, valI: a[i], valJ: a[j] });
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return { shuffled: a, swapLog };
+  }
+
+  /**
+   * Hauptziehung: Gibt die ersten `count` Einträge nach Shuffle zurück.
+   */
+  function draw(names, count) {
+    const timestamp = new Date().toISOString();
+    const entropyProbe = new Uint8Array(32);
+    crypto.getRandomValues(entropyProbe);
+    const entropyHex = Array.from(entropyProbe).map(b => b.toString(16).padStart(2,'0')).join('');
+
+    const { shuffled, swapLog } = cryptoShuffle(names);
+    const winners = shuffled.slice(0, count);
+
+    return {
+      winners,
+      meta: {
+        timestamp,
+        entropyHex,
+        totalNames: names.length,
+        drawnCount: count,
+        shuffleSteps: swapLog.length,
+        algorithm: 'Fisher-Yates (crypto.getRandomValues, Rejection-Sampling)'
+      }
+    };
+  }
+
+  /**
+   * Validierung der Eingabe.
+   * Returns: { valid: bool, names: [], error: string|null }
+   */
+  function validate(rawText, count) {
+    const names = rawText
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    // Duplikate entfernen (case-insensitive)
+    const seen = new Set();
+    const unique = [];
+    for (const n of names) {
+      const key = n.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); unique.push(n); }
+    }
+
+    if (unique.length === 0) return { valid: false, names: [], error: 'Keine Namen eingegeben.' };
+    if (count < 1)          return { valid: false, names: unique, error: 'Mindestens 1 Person ziehen.' };
+    if (count > unique.length)
+      return { valid: false, names: unique, error: `Nur ${unique.length} einzigartiger Name(n) vorhanden – kann nicht mehr ziehen als vorhanden.` };
+
+    return { valid: true, names: unique, error: null };
+  }
+
+  return { draw, validate, cryptoRandBelow };
+})();
+
+
+// ────────────────────────────────────────────────────────────
+// DesignAgent-Logik: UI-Steuerung, Animationen, DOM
+// ────────────────────────────────────────────────────────────
+
+function stepCount(dir) {
+  const inp = document.getElementById('countInput');
+  let v = parseInt(inp.value) || 1;
+  v = Math.max(1, v + dir);
+  inp.value = v;
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.className = 'msg ' + type;
+  el.textContent = text;
+}
+function clearMsg(id) {
+  const el = document.getElementById(id);
+  el.className = 'msg';
+  el.textContent = '';
+}
+
+function resetAll() {
+  document.getElementById('resultSection').classList.remove('active');
+  document.getElementById('drawStage').classList.remove('active');
+  document.getElementById('winnerList').innerHTML = '';
+  clearMsg('namesMsg');
+  clearMsg('countMsg');
+}
+
+function toggleTransparency() {
+  document.getElementById('transparencyBox').classList.toggle('open');
+}
+
+// Ripple auf Button
+document.getElementById('drawBtn').addEventListener('click', function(e) {
+  const ripple = document.createElement('span');
+  ripple.classList.add('ripple');
+  const rect = this.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.width = ripple.style.height = size + 'px';
+  ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
+  ripple.style.top  = (e.clientY - rect.top  - size/2) + 'px';
+  this.appendChild(ripple);
+  ripple.addEventListener('animationend', () => ripple.remove());
+});
+
+// ──── DRUM-ROLL ANIMATION ────
+function runDrumRoll(names, winnerName, onFinish) {
+  const track   = document.getElementById('drumTrack');
+  const label   = document.getElementById('drumLabel');
+  const stage   = document.getElementById('drawStage');
+  stage.classList.add('active');
+  label.textContent = 'Ziehung läuft…';
+
+  // Erstelle viele Items für Scroll-Effekt
+  const itemHeight = 64;
+  const repeats = 40;  // genug für flüssige Animation
+  const pool = [];
+  for (let r = 0; r < repeats; r++) {
+    for (const n of names) pool.push(n);
+  }
+  // Gewinner am Ende platzieren
+  pool.push(...names.filter(n => n !== winnerName));
+  pool.push(winnerName); // letztes = Gewinner
+
+  track.innerHTML = pool.map(n =>
+    `<div class="drum-item">${escapeHtml(n)}</div>`
+  ).join('');
+
+  const totalHeight = pool.length * itemHeight;
+  const targetY     = -(totalHeight - itemHeight * 1) + itemHeight * 0.18; // zentriert auf letztes Item
+
+  // Animation: Phase 1 = schnell, Phase 2 = langsam abgebremst
+  let startTime = null;
+  const duration = 2400; // ms gesamt
+
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function animate(ts) {
+    if (!startTime) startTime = ts;
+    const elapsed = ts - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = easeOutCubic(progress);
+    const currentY = eased * targetY;
+
+    track.style.transform = `translateY(${currentY}px)`;
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      // Fertig
+      const lastItem = track.querySelectorAll('.drum-item');
+      lastItem[lastItem.length - 1].classList.add('highlight');
+      label.textContent = '— Gezogen —';
+      setTimeout(onFinish, 420);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ──── HAUPTABLAUF ────
+async function startDraw() {
+  clearMsg('namesMsg');
+  clearMsg('countMsg');
+  document.getElementById('resultSection').classList.remove('active');
+  document.getElementById('drawStage').classList.remove('active');
+
+  const rawText = document.getElementById('namesInput').value;
+  const count   = parseInt(document.getElementById('countInput').value) || 1;
+  const { valid, names, error } = LogicAgent.validate(rawText, count);
+
+  if (!valid) {
+    const target = names.length === 0 ? 'namesMsg' : 'countMsg';
+    showMsg(target, error, 'error');
+    return;
+  }
+
+  // Ziehung durchführen
+  const result = LogicAgent.draw(names, count);
+
+  // Drum-Roll für jeden Gewinner sequenziell
+  const drawStage = document.getElementById('drawStage');
+  const winnerList = document.getElementById('winnerList');
+  winnerList.innerHTML = '';
+
+  const btn = document.getElementById('drawBtn');
+  btn.disabled = true;
+
+  // Sequentielle Drum-Rolls
+  for (let i = 0; i < result.winners.length; i++) {
+    await new Promise(resolve => {
+      const label = document.getElementById('drumLabel');
+      label.textContent = `Ziehung ${i + 1} von ${result.winners.length}…`;
+
+      // Drum-Track zurücksetzen für nächste Runde
+      const track = document.getElementById('drumTrack');
+      track.style.transform = 'translateY(0)';
+      track.innerHTML = '';
+
+      // Kurze Pause zwischen Zügen
+      const delay = i === 0 ? 300 : 600;
+      setTimeout(() => {
+        runDrumRoll(names, result.winners[i], () => {
+          // Gewinner zur Liste hinzufügen
+          const li = document.createElement('li');
+          li.className = 'winner-item';
+          li.style.animationDelay = '0s';
+          li.innerHTML = `
+            <span class="winner-rank">#${i + 1}</span>
+            <span class="winner-name">${escapeHtml(result.winners[i])}</span>
+          `;
+          winnerList.appendChild(li);
+          resolve();
+        });
+      }, delay);
+    });
+  }
+
+  // Transparenz befüllen
+  const m = result.meta;
+  document.getElementById('transparencyContent').innerHTML = `
+    <table class="protocol-table" id="protocolTable">
+      <tr><th>Feld</th><th>Wert</th></tr>
+      <tr><td>Veranstaltung</td><td>${escapeHtml(document.getElementById('eventNameInput').value || '—')}</td></tr>
+      <tr><td>Zeitstempel</td><td>${m.timestamp}</td></tr>
+      <tr><td>Entropie-Probe (32 Byte)</td><td>${m.entropyHex}</td></tr>
+      <tr><td>Algorithmus</td><td>${m.algorithm}</td></tr>
+      <tr><td>Teilnehmer gesamt</td><td>${m.totalNames}</td></tr>
+      <tr><td>Gezogen</td><td>${m.drawnCount}</td></tr>
+      <tr><td>Shuffle-Schritte</td><td>${m.shuffleSteps}</td></tr>
+      <tr><td colspan="2" style="color: var(--text-muted); font-size:0.62rem; padding-top:10px;">
+        Die Entropie-Probe wurde unmittelbar vor der Ziehung vom Browser-CSPRNG gezogen.<br>
+        Rejection-Sampling verhindert Modulo-Bias. Fisher-Yates garantiert Gleichverteilung.
+      </td></tr>
+    </table>
+  `;
+
+  // Globales Ergebnis speichern für Export
+  window.currentResult = {
+    eventName: document.getElementById('eventNameInput').value || '',
+    winners: result.winners,
+    allNames: names,
+    meta: m
+  };
+
+  // Ergebnis anzeigen
+  document.getElementById('resultSection').classList.add('active');
+  btn.disabled = false;
+}
+
+// ──── EXPORT: PDF ────
+function exportPDF() {
+  const r = window.currentResult;
+  if (!r) {
+    showMsg('namesMsg', 'Kein Ergebnis zum Exportieren vorhanden.', 'warn');
+    return;
+  }
+
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showMsg('namesMsg', 'PDF-Export nicht verfügbar: jsPDF nicht geladen. Bitte Seite neu laden.', 'error');
+    console.error('jsPDF not available', window.jspdf);
+    return;
+  }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // Fallback für ältere/angepasste jsPDF-Builds: roundedRect ist nicht immer vorhanden
+    if (typeof doc.roundedRect !== 'function') {
+      doc.roundedRect = function(x, y, w, h, /* radii ignored */ _r1, _r2, style) {
+        if (style === 'F') this.rect(x, y, w, h, 'F');
+        else this.rect(x, y, w, h);
+      };
+    }
+
+    const W = 210, H = 297;
+    const marginL = 18, marginR = 18, marginT = 20;
+    const contentW = W - marginL - marginR;
+
+    // ── Rot-Header-Block ──
+    doc.setFillColor(28, 30, 34);
+    doc.roundedRect(0, 0, W, 42, 3, 3, 'F');
+
+    doc.setFillColor(192, 57, 43);
+    doc.roundedRect(marginL, 8, contentW, 26, 2, 2, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(255, 255, 255);
+    doc.text('BRANDSICHERHEITSWACHE', W / 2, 19, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(220, 210, 195);
+    doc.text('ZUFALLSZIEHUNG · PROTOKOLL', W / 2, 25, { align: 'center' });
+
+    if (r.eventName) {
+      doc.setFontSize(7.5);
+      doc.setTextColor(212, 160, 23);
+      doc.text(r.eventName.toUpperCase(), W / 2, 32, { align: 'center' });
+    }
+
+    let y = 50;
+
+    // ── Ergebnis-Section ──
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(212, 160, 23);
+    doc.text('GEZOGENE TEILNEHMER', marginL, y);
+    y += 5;
+
+    doc.setDrawColor(192, 57, 43);
+    doc.setLineWidth(0.4);
+    doc.line(marginL, y, marginL + contentW, y);
+    y += 4;
+
+    r.winners.forEach((name, i) => {
+      const isFirst = (i === 0);
+      doc.setFillColor(isFirst ? 40 : 34, isFirst ? 38 : 36, isFirst ? 42 : 38);
+      doc.roundedRect(marginL, y - 1, contentW, 9, 1.5, 1.5, 'F');
+
+      doc.setFillColor(isFirst ? 212 : 192, isFirst ? 160 : 57, isFirst ? 23 : 43);
+      doc.roundedRect(marginL, y - 1, 2.5, 9, 0.8, 0.8, 'F');
+
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(isFirst ? 212 : 160, isFirst ? 160 : 160, isFirst ? 23 : 160);
+      doc.text(`#${i + 1}`, marginL + 6, y + 4);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(238, 232, 223);
+      doc.text(name, marginL + 16, y + 4.5);
+
+      y += 11;
+    });
+
+    y += 6;
+
+    // ── Protokoll-Section ──
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(212, 160, 23);
+    doc.text('TRANSPARENZ · ENTROPIE-PROTOKOLL', marginL, y);
+    y += 5;
+
+    doc.setDrawColor(47, 49, 51);
+    doc.setLineWidth(0.3);
+    doc.line(marginL, y, marginL + contentW, y);
+    y += 4;
+
+    const rows = [
+      ['Zeitstempel',          r.meta.timestamp],
+      ['Algorithmus',          r.meta.algorithm],
+      ['Teilnehmer gesamt',    String(r.meta.totalNames)],
+      ['Gezogen',              String(r.meta.drawnCount)],
+      ['Shuffle-Schritte',     String(r.meta.shuffleSteps)],
+      ['Entropie-Probe',       r.meta.entropyHex]
+    ];
+
+    rows.forEach(([label, val], idx) => {
+      if (idx % 2 === 0) {
+        doc.setFillColor(34, 36, 38);
+        doc.rect(marginL, y - 1.2, contentW, 5.8, 'F');
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(212, 160, 23);
+      doc.text(label, marginL + 3, y + 2.5);
+
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(6);
+      doc.setTextColor(138, 139, 142);
+
+      if (label === 'Entropie-Probe') {
+        const half = Math.ceil(val.length / 2);
+        doc.text(val.substring(0, half), marginL + 52, y + 2.5);
+        y += 5;
+        doc.text(val.substring(half), marginL + 52, y + 2.5);
+      } else {
+        doc.text(val, marginL + 52, y + 2.5);
+      }
+      y += 5.8;
+    });
+
+    y += 6;
+
+    // ── Alle Teilnehmer ──
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(138, 139, 142);
+    doc.text('ALLE TEILNEHMER:', marginL, y);
+    y += 4.5;
+
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(6.2);
+    doc.setTextColor(90, 91, 94);
+
+    const cols = 3;
+    const colW = contentW / cols;
+    let col = 0, rowY = y;
+
+    r.allNames.forEach((name) => {
+      const prefix = r.winners.includes(name) ? '* ' : '  ';
+      doc.text(prefix + name, marginL + col * colW + 2, rowY);
+      col++;
+      if (col >= cols) { col = 0; rowY += 4.2; }
+    });
+
+    y = rowY + (col > 0 ? 4.2 : 0) + 8;
+
+    // ── Footer ──
+    doc.setFillColor(28, 30, 34);
+    doc.roundedRect(marginL, y, contentW, 14, 2, 2, 'F');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(90, 91, 94);
+    doc.text('Dieser Ausdruck dient als Nachweis einer kryptographisch sicheren Zufallsziehung.', marginL + 5, y + 4, { maxWidth: contentW - 10 });
+    doc.text('Entropie wurde vom Browser-CSPRNG (crypto.getRandomValues) bezogen. Rejection-Sampling verhindert Modulo-Bias.', marginL + 5, y + 8.5, { maxWidth: contentW - 10 });
+
+    const safeName = (r.eventName || 'BRANDSICHERHEITSWACHE').replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_');
+    doc.save(`Ziehung_${safeName}_${r.meta.timestamp.slice(0,10)}.pdf`);
+  } catch (err) {
+    console.error('PDF export failed', err);
+    showMsg('namesMsg', 'PDF-Export fehlgeschlagen: ' + (err && err.message ? err.message : String(err)), 'error');
+  }
+}
+
+// ──── EXPORT: CSV ────
+function exportCSV() {
+  const r = window.currentResult;
+  if (!r) {
+    showMsg('namesMsg', 'Kein Ergebnis zum Exportieren vorhanden.', 'warn');
+    return;
+  }
+
+  try {
+    const rows = [
+      ['Veranstaltung', r.eventName || ''],
+      ['Zeitstempel', r.meta && r.meta.timestamp ? r.meta.timestamp : ''],
+      ['Algorithmus', r.meta && r.meta.algorithm ? r.meta.algorithm : ''],
+      ['Entropie-Probe', r.meta && r.meta.entropyHex ? r.meta.entropyHex : ''],
+      ['Teilnehmer gesamt', r.meta && r.meta.totalNames ? String(r.meta.totalNames) : String((r.allNames && r.allNames.length) || '')],
+      ['Gezogen', r.meta && r.meta.drawnCount ? String(r.meta.drawnCount) : String((r.winners && r.winners.length) || '')],
+      [],
+      ['Rang', 'Name', 'Gezogen']
+    ];
+
+    r.allNames.forEach(name => {
+      const idx = r.winners.indexOf(name);
+      rows.push([idx >= 0 ? `#${idx + 1}` : '', name, idx >= 0 ? 'JA' : 'NEIN']);
+    });
+
+    const csvContent = rows.map(row =>
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';')
+    ).join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeName = (r.eventName || 'BRANDSICHERHEITSWACHE').replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_');
+    const datePart = (r.meta && r.meta.timestamp) ? r.meta.timestamp.slice(0,10) : new Date().toISOString().slice(0,10);
+    link.href = url;
+    link.download = `Ziehung_${safeName}_${datePart}.csv`;
+    document.body.appendChild(link);
+    // Some browsers require the link to be 'click' dispatched
+    link.dispatchEvent(new MouseEvent('click'));
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('CSV export failed', err);
+    showMsg('namesMsg', 'CSV-Export fehlgeschlagen: ' + (err && err.message ? err.message : String(err)), 'error');
+  }
+}
+</script>
+
+</body>
+</html>
