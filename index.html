@@ -340,9 +340,11 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
   padding: 14px 18px;
   margin-bottom: 8px;
   animation: slideIn 0.35s ease both;
+  border-left: 3px solid var(--red-primary);
 }
-.winner-item:nth-child(1) { border-left: 3px solid var(--amber); }
-.winner-item:nth-child(n+2) { border-left: 3px solid var(--red-primary); }
+/* Alle Gewinner erhalten das vorhandene Rot; der erste Platz wird zusätzlich
+   durch die Rang-Box in rot hervorgehoben. */
+.winner-item:first-child .winner-rank { color: var(--red-primary); background: rgba(192,57,43,0.12); }
 
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(-16px); }
@@ -358,7 +360,6 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
   border-radius: 4px;
   padding: 3px 0;
 }
-.winner-item:nth-child(1) .winner-rank { color: var(--amber); background: rgba(212,160,23,0.12); }
 
 .winner-name {
   font-size: 1rem;
@@ -753,7 +754,12 @@ function runDrumRoll(names, winnerName, onFinish) {
   ).join('');
 
   const totalHeight = pool.length * itemHeight;
-  const targetY     = -(totalHeight - itemHeight * 1) + itemHeight * 0.18; // zentriert auf letztes Item
+  // Berechne dynamisch die Mitte des sichtbaren Drum-Fensters, damit der Gewinner
+  // exakt zentriert wird, auch wenn CSS-Werte sich ändern.
+  const drumWindow = document.querySelector('.drum-window');
+  const windowCenter = (drumWindow ? (drumWindow.offsetTop + drumWindow.offsetHeight / 2) : (itemHeight / 2));
+  const lastIndex = pool.length - 1;
+  const targetY = windowCenter - (lastIndex * itemHeight) - (itemHeight / 2); // zentriert auf letztes Item
 
   // Animation: Phase 1 = schnell, Phase 2 = langsam abgebremst
   let startTime = null;
