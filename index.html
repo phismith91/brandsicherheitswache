@@ -3,8 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="color-scheme" content="dark" />
 <title>Brandsicherheitswache – Zufallsziehung</title>
-<subtitle>Ein Tool der Feuerwehr Aidlingen</subtitle>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" />
+<meta name="description" content="Kryptographisch sichere Zufallsziehung für Brandsicherheitswachen – ein Tool der Feuerwehr Aidlingen" />
 <script src="js/libs/jspdf.umd.min.js"></script>
 <script>
   (function(){
@@ -25,7 +29,6 @@
    Palette: Deep Charcoal Base | Feuerwehr-Rot | Amber Akzent
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
 
 :root {
   --bg-base:        #111214;
@@ -37,10 +40,14 @@
   --amber:          #d4a017;
   --amber-dim:      rgba(212, 160, 23, 0.25);
   --text-primary:   #eee8df;
-  --text-secondary: #8a8b8e;
-  --text-muted:     #5a5b5e;
+  --text-secondary: #939497;
+  --text-muted:     #7a7b7e;
   --border:         #2f3133;
   --radius:         6px;
+  --white:          #ffffff;
+  --red-error-text: #e07070;
+  --bg-disabled:    #3a3b3e;
+  --red-winner-bg:  rgba(192, 57, 43, 0.12);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -154,7 +161,7 @@ textarea::placeholder { color: var(--text-muted); }
   color: var(--text-secondary);
 }
 .number-input-wrap {
-  position: relative; width: 90px;
+  position: relative; width: 110px;
 }
 input[type="number"] {
   width: 100%;
@@ -178,14 +185,16 @@ input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
 input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 10px var(--red-glow); }
 
 .btn-stepper {
-  position: absolute; right: 6px;
+  position: absolute; right: 0;
   background: none; border: none; color: var(--text-muted);
   cursor: pointer; font-size: 11px; line-height: 1;
   transition: color 0.15s;
+  width: 28px; height: 50%;
+  display: flex; align-items: center; justify-content: center;
 }
 .btn-stepper:hover { color: var(--amber); }
-.btn-stepper.up  { top: 5px; }
-.btn-stepper.down { bottom: 5px; }
+.btn-stepper.up  { top: 0; }
+.btn-stepper.down { bottom: 0; }
 
 .info-text {
   font-size: 0.72rem;
@@ -202,7 +211,7 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
   background: var(--red-primary);
   border: none;
   border-radius: var(--radius);
-  color: #fff;
+  color: var(--white);
   font-family: 'Oswald', sans-serif;
   font-size: 1.1rem;
   font-weight: 600;
@@ -219,7 +228,7 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
 }
 .btn-draw:active { transform: scale(0.98); }
 .btn-draw:disabled {
-  background: #3a3b3e;
+  background: var(--bg-disabled);
   color: var(--text-muted);
   cursor: not-allowed;
   box-shadow: none;
@@ -251,7 +260,7 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
   border-radius: var(--radius);
   overflow: hidden;
   position: relative;
-  height: 64px;
+  height: 4rem;
   margin-bottom: 8px;
 }
 /* Fenster-Highlight oben & unten */
@@ -279,9 +288,10 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
 .drum-track {
   position: absolute; top: 0; left: 0; right: 0;
   transition: transform 0.08s linear;
+  will-change: transform;
 }
 .drum-item {
-  height: 64px;
+  height: 4rem;
   display: flex; align-items: center; justify-content: center;
   font-family: 'Oswald', sans-serif;
   font-size: 1rem;
@@ -340,11 +350,12 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
   padding: 14px 18px;
   margin-bottom: 8px;
   animation: slideIn 0.35s ease both;
+  will-change: transform, opacity;
   border-left: 3px solid var(--red-primary);
 }
 /* Alle Gewinner erhalten das vorhandene Rot; der erste Platz wird zusätzlich
    durch die Rang-Box in rot hervorgehoben. */
-.winner-item:first-child .winner-rank { color: var(--red-primary); background: rgba(192,57,43,0.12); }
+.winner-item:first-child .winner-rank { color: var(--red-primary); background: var(--red-winner-bg); }
 
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(-16px); }
@@ -415,7 +426,7 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
   margin-top: 10px;
   display: none;
 }
-.msg.error { display: block; background: rgba(192,57,43,0.15); color: #e07070; border: 1px solid rgba(192,57,43,0.3); }
+.msg.error { display: block; background: rgba(192,57,43,0.15); color: var(--red-error-text); border: 1px solid rgba(192,57,43,0.3); }
 .msg.warn  { display: block; background: rgba(212,160,23,0.1); color: #c8a030; border: 1px solid rgba(212,160,23,0.25); }
 
 /* ──── TEXT INPUT (Veranstaltungsname) ──── */
@@ -490,6 +501,41 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
   word-break: break-all;
 }
 .protocol-table tr:last-child td { border-bottom: none; }
+
+/* ──── BREAKPOINT KLEIN ──── */
+@media (max-width: 400px) {
+  .page-wrap { padding: 24px 14px 40px; }
+  .header h1 { font-size: 1.35rem; letter-spacing: 2px; }
+  .input-row { flex-direction: column; align-items: stretch; }
+  .input-group[style] { min-width: unset !important; }
+  .export-row { flex-direction: column; }
+  .card { padding: 16px; }
+}
+
+/* ──── FOCUS & MOTION ──── */
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+/* Button-Reset für .transparency-header */
+button.transparency-header {
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -505,13 +551,13 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
 
   <!-- EINGABE: VERANSTALTUNG -->
   <div class="card">
-    <div class="card-label">Veranstaltung</div>
+    <label class="card-label" for="eventNameInput">Veranstaltung</label>
     <input type="text" id="eventNameInput" class="text-input" placeholder="z. B. BRANDSICHERHEITSWACHE – Silvester 2025" />
   </div>
 
   <!-- EINGABE: NAMEN -->
   <div class="card">
-    <div class="card-label">Teilnehmer</div>
+    <label class="card-label" for="namesInput">Teilnehmer</label>
     <textarea id="namesInput" placeholder="Ein Name pro Zeile eingeben…
 
 Max Mustermann
@@ -526,11 +572,11 @@ Klaus Zugzieher
     <div class="card-label">Dienstanzahl</div>
     <div class="input-row">
       <div class="input-group">
-        <label>Wie viele werden gezogen?</label>
+        <label for="countInput">Wie viele werden gezogen?</label>
         <div class="number-input-wrap">
           <input type="number" id="countInput" value="1" min="1" max="50"/>
-          <button class="btn-stepper up" onclick="stepCount(1)">▲</button>
-          <button class="btn-stepper down" onclick="stepCount(-1)">▼</button>
+          <button class="btn-stepper up" onclick="stepCount(1)" aria-label="Anzahl erhöhen">▲</button>
+          <button class="btn-stepper down" onclick="stepCount(-1)" aria-label="Anzahl verringern">▼</button>
         </div>
       </div>
       <div class="input-group" style="flex:1; min-width:180px;">
@@ -549,11 +595,11 @@ Klaus Zugzieher
       <div class="drum-window"></div>
       <div class="drum-track" id="drumTrack"></div>
     </div>
-    <div class="info-text" id="drumLabel" style="color: var(--amber);">Ziehung läuft…</div>
+    <div class="info-text" id="drumLabel" style="color: var(--amber);" aria-live="assertive" aria-atomic="true">Ziehung läuft…</div>
   </div>
 
   <!-- ERGEBNIS -->
-  <div class="result-section" id="resultSection">
+  <div class="result-section" id="resultSection" aria-live="polite" aria-atomic="false">
     <div class="result-header">
       <div class="result-title">Ergebnis</div>
       <button class="btn-reset" onclick="resetAll()">↺ Neue Ziehung</button>
@@ -572,11 +618,11 @@ Klaus Zugzieher
 
     <!-- TRANSPARENZ -->
     <div class="transparency" id="transparencyBox">
-      <div class="transparency-header" onclick="toggleTransparency()">
+      <button class="transparency-header" onclick="toggleTransparency()" aria-expanded="false" aria-controls="transparencyBody">
         <span>Transparenz · Entropie-Details</span>
         <span class="toggle-icon">▼</span>
-      </div>
-      <div class="transparency-body">
+      </button>
+      <div class="transparency-body" id="transparencyBody">
         <div class="transparency-content" id="transparencyContent">
           <table class="protocol-table" id="protocolTable">
             <!-- wird dynamisch gefüllt -->
@@ -714,7 +760,10 @@ function resetAll() {
 }
 
 function toggleTransparency() {
-  document.getElementById('transparencyBox').classList.toggle('open');
+  const box = document.getElementById('transparencyBox');
+  box.classList.toggle('open');
+  const btn = box.querySelector('.transparency-header');
+  btn.setAttribute('aria-expanded', box.classList.contains('open') ? 'true' : 'false');
 }
 
 // Ripple auf Button
@@ -739,11 +788,17 @@ function runDrumRoll(names, winnerName, onFinish) {
   label.textContent = 'Ziehung läuft…';
 
   // Erstelle viele Items für Scroll-Effekt
-  const itemHeight = 64;
+  // itemHeight wird dynamisch aus dem rem-Wert berechnet (4rem)
+  const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const itemHeight = 4 * remPx;
   const repeats = 40;  // genug für flüssige Animation
+  // Begrenze Wiederholungen: genug für flüssige Animation ohne exzessiven DOM-Aufwand
+  const maxPoolItems = Math.min(repeats * names.length, 300);
   const pool = [];
-  for (let r = 0; r < repeats; r++) {
-    for (const n of names) pool.push(n);
+  while (pool.length < maxPoolItems) {
+    for (const n of names) {
+      if (pool.length < maxPoolItems) pool.push(n);
+    }
   }
   // Gewinner am Ende platzieren
   pool.push(...names.filter(n => n !== winnerName));
@@ -760,6 +815,22 @@ function runDrumRoll(names, winnerName, onFinish) {
   const windowCenter = (drumWindow ? (drumWindow.offsetTop + drumWindow.offsetHeight / 2) : (itemHeight / 2));
   const lastIndex = pool.length - 1;
   const targetY = windowCenter - (lastIndex * itemHeight) - (itemHeight / 2); // zentriert auf letztes Item
+
+  // Bei prefers-reduced-motion sofort zum Gewinner springen
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function finish() {
+    track.style.transform = `translateY(${targetY}px)`;
+    const lastItem = track.querySelectorAll('.drum-item');
+    lastItem[lastItem.length - 1].classList.add('highlight');
+    label.textContent = '— Gezogen —';
+    setTimeout(onFinish, prefersReduced ? 0 : 420);
+  }
+
+  if (prefersReduced) {
+    finish();
+    return;
+  }
 
   // Animation: Phase 1 = schnell, Phase 2 = langsam abgebremst
   let startTime = null;
@@ -779,11 +850,7 @@ function runDrumRoll(names, winnerName, onFinish) {
     if (progress < 1) {
       requestAnimationFrame(animate);
     } else {
-      // Fertig
-      const lastItem = track.querySelectorAll('.drum-item');
-      lastItem[lastItem.length - 1].classList.add('highlight');
-      label.textContent = '— Gezogen —';
-      setTimeout(onFinish, 420);
+      finish();
     }
   }
   requestAnimationFrame(animate);
