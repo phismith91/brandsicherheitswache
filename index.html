@@ -357,6 +357,39 @@ input[type="number"]:focus { border-color: var(--red-primary); box-shadow: 0 0 1
    durch die Rang-Box in rot hervorgehoben. */
 .winner-item:first-child .winner-rank { color: var(--red-primary); background: var(--red-winner-bg); }
 
+/* Reserve-Gewinner: amber statt rot */
+.winner-item.reserve {
+  border-left-color: var(--amber);
+  opacity: 0.85;
+}
+.winner-item.reserve .winner-rank {
+  color: var(--amber);
+  background: var(--amber-dim);
+}
+
+/* Gruppen-Trennlabel (Hauptdienst / Reserve) */
+.winner-group-label {
+  font-size: 0.62rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: 'Share Tech Mono', monospace;
+  padding: 10px 0 4px;
+  list-style: none;
+}
+.winner-group-label:first-child { padding-top: 0; }
+
+/* Gewichts-Hinweis unter dem Textarea */
+.weight-hint {
+  font-size: 0.68rem;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--text-muted);
+  margin-top: 6px;
+  min-height: 1.2em;
+  transition: color 0.2s;
+}
+.weight-hint.weight-active { color: var(--amber); }
+
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(-16px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -564,6 +597,7 @@ Max Mustermann
 Anna Beispiel
 Klaus Zugzieher
 …"></textarea>
+    <div class="weight-hint" id="weightHint"></div>
     <div id="namesMsg"></div>
   </div>
 
@@ -572,15 +606,23 @@ Klaus Zugzieher
     <div class="card-label">Dienstanzahl</div>
     <div class="input-row">
       <div class="input-group">
-        <label for="countInput">Wie viele werden gezogen?</label>
+        <label for="countInput">Hauptdienst</label>
         <div class="number-input-wrap">
           <input type="number" id="countInput" value="1" min="1" max="50"/>
-          <button class="btn-stepper up" onclick="stepCount(1)" aria-label="Anzahl erhöhen">▲</button>
-          <button class="btn-stepper down" onclick="stepCount(-1)" aria-label="Anzahl verringern">▼</button>
+          <button class="btn-stepper up" onclick="stepInput('countInput', 1, 1)" aria-label="Hauptdienst erhöhen">▲</button>
+          <button class="btn-stepper down" onclick="stepInput('countInput', -1, 1)" aria-label="Hauptdienst verringern">▼</button>
+        </div>
+      </div>
+      <div class="input-group">
+        <label for="ersatzInput">Reserve</label>
+        <div class="number-input-wrap">
+          <input type="number" id="ersatzInput" value="0" min="0" max="50"/>
+          <button class="btn-stepper up" onclick="stepInput('ersatzInput', 1, 0)" aria-label="Reserve erhöhen">▲</button>
+          <button class="btn-stepper down" onclick="stepInput('ersatzInput', -1, 0)" aria-label="Reserve verringern">▼</button>
         </div>
       </div>
       <div class="input-group" style="flex:1; min-width:180px;">
-        <label>&nbsp;</label>
+        <label aria-hidden="true">&nbsp;</label>
         <button class="btn-draw" id="drawBtn" onclick="startDraw()">
           Ziehung Starten
         </button>
@@ -700,32 +742,88 @@ const LogicAgent = (() => {
   }
 
   /**
-   * Validierung der Eingabe.
-   * Returns: { valid: bool, names: [], error: string|null }
+   * Parst eine Roheingabe in Einträge mit optionalem Gewicht.
+   * Syntax: "Name" (Gewicht 1) oder "Name:3" (Gewicht 3).
    */
-  function validate(rawText, count) {
-    const names = rawText
+  function parseEntries(rawText) {
+    return rawText
       .split('\n')
       .map(s => s.trim())
-      .filter(s => s.length > 0);
-
-    // Duplikate entfernen (case-insensitive)
-    const seen = new Set();
-    const unique = [];
-    for (const n of names) {
-      const key = n.toLowerCase();
-      if (!seen.has(key)) { seen.add(key); unique.push(n); }
-    }
-
-    if (unique.length === 0) return { valid: false, names: [], error: 'Keine Namen eingegeben.' };
-    if (count < 1)          return { valid: false, names: unique, error: 'Mindestens 1 Person ziehen.' };
-    if (count > unique.length)
-      return { valid: false, names: unique, error: `Nur ${unique.length} einzigartiger Name(n) vorhanden – kann nicht mehr ziehen als vorhanden.` };
-
-    return { valid: true, names: unique, error: null };
+      .filter(s => s.length > 0)
+      .map(s => {
+        const m = s.match(/^(.+?):(\d+)$/);
+        if (m) {
+          const w = parseInt(m[2]);
+          return { name: m[1].trim(), weight: w >= 1 ? w : 1 };
+        }
+        return { name: s, weight: 1 };
+      });
   }
 
-  return { draw, validate, cryptoRandBelow };
+  /**
+   * Validierung der Eingabe.
+   * Returns: { valid: bool, entries: [], error: string|null }
+   */
+  function validate(rawText, count, ersatz = 0) {
+    const entries = parseEntries(rawText);
+
+    // Duplikate entfernen (case-insensitive nach Name)
+    const seen = new Set();
+    const unique = [];
+    for (const e of entries) {
+      const key = e.name.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); unique.push(e); }
+    }
+
+    const total = count + ersatz;
+    if (unique.length === 0) return { valid: false, entries: [], error: 'Keine Namen eingegeben.' };
+    if (count < 1)           return { valid: false, entries: unique, error: 'Mindestens 1 Person ziehen.' };
+    if (total > unique.length)
+      return { valid: false, entries: unique, error: `Nur ${unique.length} einzigartige Name(n) vorhanden – kann nicht ${total} ziehen.` };
+
+    return { valid: true, entries: unique, error: null };
+  }
+
+  /**
+   * Gewichtete Ziehung ohne Wiederholung mit CSPRNG.
+   * Jeder Eintrag hat ein Gewicht; höheres Gewicht = höhere Wahrscheinlichkeit.
+   */
+  function drawWeighted(entries, count) {
+    const timestamp = new Date().toISOString();
+    const entropyProbe = new Uint8Array(32);
+    crypto.getRandomValues(entropyProbe);
+    const entropyHex = Array.from(entropyProbe).map(b => b.toString(16).padStart(2,'0')).join('');
+
+    const pool = entries.map(e => ({ ...e }));
+    const winners = [];
+
+    for (let i = 0; i < count; i++) {
+      const total = pool.reduce((s, e) => s + e.weight, 0);
+      // CSPRNG-Float über 24-Bit-Präzision
+      const r = cryptoRandBelow(0xFFFFFF) / 0xFFFFFF * total;
+      let cum = 0, idx = pool.length - 1;
+      for (let j = 0; j < pool.length; j++) {
+        cum += pool[j].weight;
+        if (cum > r) { idx = j; break; }
+      }
+      winners.push(pool[idx].name);
+      pool.splice(idx, 1);
+    }
+
+    return {
+      winners,
+      meta: {
+        timestamp,
+        entropyHex,
+        totalNames: entries.length,
+        drawnCount: count,
+        shuffleSteps: count,
+        algorithm: 'Gewichtete Ziehung ohne Wiederholung (crypto.getRandomValues, sequentielles Sampling)'
+      }
+    };
+  }
+
+  return { draw, drawWeighted, validate, parseEntries, cryptoRandBelow };
 })();
 
 
@@ -733,12 +831,27 @@ const LogicAgent = (() => {
 // DesignAgent-Logik: UI-Steuerung, Animationen, DOM
 // ────────────────────────────────────────────────────────────
 
-function stepCount(dir) {
-  const inp = document.getElementById('countInput');
-  let v = parseInt(inp.value) || 1;
-  v = Math.max(1, v + dir);
+function stepInput(id, dir, minVal) {
+  const inp = document.getElementById(id);
+  let v = parseInt(inp.value);
+  if (isNaN(v)) v = minVal;
+  v = Math.max(minVal, v + dir);
   inp.value = v;
 }
+
+// Weight-Hint live aktualisieren
+document.getElementById('namesInput').addEventListener('input', function() {
+  const entries = LogicAgent.parseEntries(this.value);
+  const weighted = entries.filter(e => e.weight > 1);
+  const hint = document.getElementById('weightHint');
+  if (weighted.length > 0) {
+    hint.textContent = `Gewichteter Modus aktiv – ${weighted.length} von ${entries.length} Person(en) mit erhöhtem Gewicht`;
+    hint.className = 'weight-hint weight-active';
+  } else {
+    hint.textContent = entries.length > 0 ? 'Tipp: Name:3 gibt einer Person 3× höhere Ziehungs-Wahrscheinlichkeit' : '';
+    hint.className = 'weight-hint';
+  }
+});
 
 function showMsg(id, text, type) {
   const el = document.getElementById(id);
@@ -869,46 +982,71 @@ async function startDraw() {
   document.getElementById('resultSection').classList.remove('active');
   document.getElementById('drawStage').classList.remove('active');
 
-  const rawText = document.getElementById('namesInput').value;
-  const count   = parseInt(document.getElementById('countInput').value) || 1;
-  const { valid, names, error } = LogicAgent.validate(rawText, count);
+  const rawText  = document.getElementById('namesInput').value;
+  const count    = parseInt(document.getElementById('countInput').value) || 1;
+  const ersatz   = Math.max(0, parseInt(document.getElementById('ersatzInput').value) || 0);
+  const total    = count + ersatz;
+
+  const { valid, entries, error } = LogicAgent.validate(rawText, count, ersatz);
 
   if (!valid) {
-    const target = names.length === 0 ? 'namesMsg' : 'countMsg';
+    const target = entries.length === 0 ? 'namesMsg' : 'countMsg';
     showMsg(target, error, 'error');
     return;
   }
 
-  // Ziehung durchführen
-  const result = LogicAgent.draw(names, count);
+  const isWeighted = entries.some(e => e.weight > 1);
+  const names = entries.map(e => e.name);
 
-  // Drum-Roll für jeden Gewinner sequenziell
-  const drawStage = document.getElementById('drawStage');
+  // Ziehung durchführen (gewichtet oder gleichverteilt)
+  const result = isWeighted
+    ? LogicAgent.drawWeighted(entries, total)
+    : LogicAgent.draw(names, total);
+
   const winnerList = document.getElementById('winnerList');
   winnerList.innerHTML = '';
 
   const btn = document.getElementById('drawBtn');
   btn.disabled = true;
 
-  // Sequentielle Drum-Rolls
-  for (let i = 0; i < result.winners.length; i++) {
+  // Gruppen-Label "Hauptdienst" vor dem ersten Eintrag (nur wenn Reserve > 0)
+  if (ersatz > 0) {
+    const lbl = document.createElement('li');
+    lbl.className = 'winner-group-label';
+    lbl.textContent = 'Hauptdienst';
+    winnerList.appendChild(lbl);
+  }
+
+  // Sequentielle Drum-Rolls für alle Gezogenen
+  for (let i = 0; i < total; i++) {
+    // Reserve-Label vor dem ersten Reserve-Eintrag
+    if (ersatz > 0 && i === count) {
+      const lbl = document.createElement('li');
+      lbl.className = 'winner-group-label';
+      lbl.textContent = 'Reserve';
+      winnerList.appendChild(lbl);
+    }
+
     await new Promise(resolve => {
       const label = document.getElementById('drumLabel');
-      label.textContent = `Ziehung ${i + 1} von ${result.winners.length}…`;
+      const isReserve = i >= count;
+      if (ersatz > 0) {
+        label.textContent = isReserve
+          ? `Reserve ${i - count + 1} von ${ersatz}…`
+          : `Hauptdienst ${i + 1} von ${count}…`;
+      } else {
+        label.textContent = `Ziehung ${i + 1} von ${total}…`;
+      }
 
-      // Drum-Track zurücksetzen für nächste Runde
       const track = document.getElementById('drumTrack');
       track.style.transform = 'translateY(0)';
       track.innerHTML = '';
 
-      // Kurze Pause zwischen Zügen
       const delay = i === 0 ? 300 : 600;
       setTimeout(() => {
         runDrumRoll(names, result.winners[i], () => {
-          // Gewinner zur Liste hinzufügen
           const li = document.createElement('li');
-          li.className = 'winner-item';
-          li.style.animationDelay = '0s';
+          li.className = 'winner-item' + (i >= count ? ' reserve' : '');
           li.innerHTML = `
             <span class="winner-rank">#${i + 1}</span>
             <span class="winner-name">${escapeHtml(result.winners[i])}</span>
@@ -922,6 +1060,12 @@ async function startDraw() {
 
   // Transparenz befüllen
   const m = result.meta;
+  const extraRows = [
+    ersatz > 0 ? `<tr><td>Hauptdienst</td><td>${count}</td></tr>` : '',
+    ersatz > 0 ? `<tr><td>Reserve</td><td>${ersatz}</td></tr>` : '',
+    isWeighted  ? `<tr><td>Modus</td><td>Gewichtet</td></tr>` : '',
+  ].join('');
+
   document.getElementById('transparencyContent').innerHTML = `
     <table class="protocol-table" id="protocolTable">
       <tr><th>Feld</th><th>Wert</th></tr>
@@ -929,9 +1073,10 @@ async function startDraw() {
       <tr><td>Zeitstempel</td><td>${m.timestamp}</td></tr>
       <tr><td>Entropie-Probe (32 Byte)</td><td>${m.entropyHex}</td></tr>
       <tr><td>Algorithmus</td><td>${m.algorithm}</td></tr>
+      ${extraRows}
       <tr><td>Teilnehmer gesamt</td><td>${m.totalNames}</td></tr>
-      <tr><td>Gezogen</td><td>${m.drawnCount}</td></tr>
-      <tr><td>Shuffle-Schritte</td><td>${m.shuffleSteps}</td></tr>
+      <tr><td>Gezogen (gesamt)</td><td>${m.drawnCount}</td></tr>
+      <tr><td>Schritte</td><td>${m.shuffleSteps}</td></tr>
       <tr><td colspan="2" style="color: var(--text-muted); font-size:0.62rem; padding-top:10px;">
         Die Entropie-Probe wurde unmittelbar vor der Ziehung vom Browser-CSPRNG gezogen.<br>
         Rejection-Sampling verhindert Modulo-Bias. Fisher-Yates garantiert Gleichverteilung.
@@ -941,13 +1086,15 @@ async function startDraw() {
 
   // Globales Ergebnis speichern für Export
   window.currentResult = {
-    eventName: document.getElementById('eventNameInput').value || '',
-    winners: result.winners,
-    allNames: names,
+    eventName:  document.getElementById('eventNameInput').value || '',
+    winners:    result.winners.slice(0, count),
+    reserve:    result.winners.slice(count),
+    allNames:   names,
+    entries,
+    isWeighted,
     meta: m
   };
 
-  // Ergebnis anzeigen
   document.getElementById('resultSection').classList.add('active');
   btn.disabled = false;
 }
@@ -1007,11 +1154,31 @@ function exportPDF() {
 
     let y = 50;
 
-    // ── Ergebnis-Section ──
+    // ── Hilfsfunktion: Gewinner-Block rendern ──
+    function renderWinnerBlock(nameList, startIndex, accentRgb) {
+      nameList.forEach((name, i) => {
+        const gi = startIndex + i;
+        doc.setFillColor(34, 36, 38);
+        doc.roundedRect(marginL, y - 1, contentW, 9, 1.5, 1.5, 'F');
+        doc.setFillColor(...accentRgb);
+        doc.roundedRect(marginL, y - 1, 2.5, 9, 0.8, 0.8, 'F');
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(...accentRgb);
+        doc.text(`#${gi + 1}`, marginL + 6, y + 4);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(238, 232, 223);
+        doc.text(name, marginL + 16, y + 4.5);
+        y += 11;
+      });
+    }
+
+    // ── Hauptdienst-Section ──
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(212, 160, 23);
-    doc.text('GEZOGENE TEILNEHMER', marginL, y);
+    doc.text(r.reserve && r.reserve.length > 0 ? 'HAUPTDIENST' : 'GEZOGENE TEILNEHMER', marginL, y);
     y += 5;
 
     doc.setDrawColor(192, 57, 43);
@@ -1019,28 +1186,27 @@ function exportPDF() {
     doc.line(marginL, y, marginL + contentW, y);
     y += 4;
 
-    r.winners.forEach((name, i) => {
-      const isFirst = (i === 0);
-      doc.setFillColor(isFirst ? 40 : 34, isFirst ? 38 : 36, isFirst ? 42 : 38);
-      doc.roundedRect(marginL, y - 1, contentW, 9, 1.5, 1.5, 'F');
+    renderWinnerBlock(r.winners, 0, [192, 57, 43]);
+    y += 4;
 
-      doc.setFillColor(isFirst ? 212 : 192, isFirst ? 160 : 57, isFirst ? 23 : 43);
-      doc.roundedRect(marginL, y - 1, 2.5, 9, 0.8, 0.8, 'F');
-
-      doc.setFont('courier', 'bold');
-      doc.setFontSize(7);
-      doc.setTextColor(isFirst ? 212 : 160, isFirst ? 160 : 160, isFirst ? 23 : 160);
-      doc.text(`#${i + 1}`, marginL + 6, y + 4);
-
+    // ── Reserve-Section (nur wenn vorhanden) ──
+    if (r.reserve && r.reserve.length > 0) {
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(238, 232, 223);
-      doc.text(name, marginL + 16, y + 4.5);
+      doc.setFontSize(8);
+      doc.setTextColor(212, 160, 23);
+      doc.text('RESERVE', marginL, y);
+      y += 5;
 
-      y += 11;
-    });
+      doc.setDrawColor(212, 160, 23);
+      doc.setLineWidth(0.4);
+      doc.line(marginL, y, marginL + contentW, y);
+      y += 4;
 
-    y += 6;
+      renderWinnerBlock(r.reserve, r.winners.length, [212, 160, 23]);
+      y += 4;
+    }
+
+    y += 2;
 
     // ── Protokoll-Section ──
     doc.setFont('helvetica', 'bold');
@@ -1057,9 +1223,14 @@ function exportPDF() {
     const rows = [
       ['Zeitstempel',          r.meta.timestamp],
       ['Algorithmus',          r.meta.algorithm],
+      ...(r.reserve && r.reserve.length > 0 ? [
+        ['Hauptdienst',        String(r.winners.length)],
+        ['Reserve',            String(r.reserve.length)],
+      ] : []),
+      ...(r.isWeighted ? [['Modus', 'Gewichtet']] : []),
       ['Teilnehmer gesamt',    String(r.meta.totalNames)],
-      ['Gezogen',              String(r.meta.drawnCount)],
-      ['Shuffle-Schritte',     String(r.meta.shuffleSteps)],
+      ['Gezogen (gesamt)',     String(r.meta.drawnCount)],
+      ['Schritte',             String(r.meta.shuffleSteps)],
       ['Entropie-Probe',       r.meta.entropyHex]
     ];
 
@@ -1106,7 +1277,9 @@ function exportPDF() {
     let col = 0, rowY = y;
 
     r.allNames.forEach((name) => {
-      const prefix = r.winners.includes(name) ? '* ' : '  ';
+      const isWinner  = r.winners.includes(name);
+      const isReserve = (r.reserve || []).includes(name);
+      const prefix = isWinner ? '* ' : isReserve ? '+ ' : '  ';
       doc.text(prefix + name, marginL + col * colW + 2, rowY);
       col++;
       if (col >= cols) { col = 0; rowY += 4.2; }
@@ -1141,20 +1314,44 @@ function exportCSV() {
   }
 
   try {
-    const rows = [
-      ['Veranstaltung', r.eventName || ''],
-      ['Zeitstempel', r.meta && r.meta.timestamp ? r.meta.timestamp : ''],
-      ['Algorithmus', r.meta && r.meta.algorithm ? r.meta.algorithm : ''],
-      ['Entropie-Probe', r.meta && r.meta.entropyHex ? r.meta.entropyHex : ''],
-      ['Teilnehmer gesamt', r.meta && r.meta.totalNames ? String(r.meta.totalNames) : String((r.allNames && r.allNames.length) || '')],
-      ['Gezogen', r.meta && r.meta.drawnCount ? String(r.meta.drawnCount) : String((r.winners && r.winners.length) || '')],
-      [],
-      ['Rang', 'Name', 'Gezogen']
+    const reserve   = r.reserve || [];
+    const hasReserve   = reserve.length > 0;
+    const allDrawn  = [...r.winners, ...reserve];
+
+    const metaRows = [
+      ['Veranstaltung',     r.eventName || ''],
+      ['Zeitstempel',       r.meta && r.meta.timestamp  ? r.meta.timestamp  : ''],
+      ['Algorithmus',       r.meta && r.meta.algorithm  ? r.meta.algorithm  : ''],
+      ['Entropie-Probe',    r.meta && r.meta.entropyHex ? r.meta.entropyHex : ''],
+      ['Teilnehmer gesamt', String(r.meta && r.meta.totalNames ? r.meta.totalNames : (r.allNames || []).length)],
+      ['Gezogen (gesamt)',  String(allDrawn.length)],
     ];
+    if (hasReserve) {
+      metaRows.push(['Hauptdienst', String(r.winners.length)]);
+      metaRows.push(['Reserve',     String(reserve.length)]);
+    }
+    if (r.isWeighted) metaRows.push(['Modus', 'Gewichtet']);
+
+    const header = hasReserve
+      ? ['Rang', 'Name', 'Gruppe', 'Gezogen']
+      : ['Rang', 'Name', 'Gezogen'];
+
+    const rows = [...metaRows, [], header];
 
     r.allNames.forEach(name => {
-      const idx = r.winners.indexOf(name);
-      rows.push([idx >= 0 ? `#${idx + 1}` : '', name, idx >= 0 ? 'JA' : 'NEIN']);
+      const wi = r.winners.indexOf(name);
+      const ri = reserve.indexOf(name);
+      if (wi >= 0) {
+        rows.push(hasReserve
+          ? [`#${wi + 1}`, name, 'Hauptdienst', 'JA']
+          : [`#${wi + 1}`, name, 'JA']);
+      } else if (ri >= 0) {
+        rows.push([`#${r.winners.length + ri + 1}`, name, 'Reserve', 'JA']);
+      } else {
+        rows.push(hasReserve
+          ? ['', name, '', 'NEIN']
+          : ['', name, 'NEIN']);
+      }
     });
 
     const csvContent = rows.map(row =>
